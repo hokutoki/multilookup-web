@@ -60,10 +60,11 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
 }
 
-start();
+const appReady = start();
 
-els.searchForm.addEventListener("submit", (event) => {
+els.searchForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  await appReady;
   runSearch(els.queryInput.value);
 });
 
@@ -71,13 +72,15 @@ els.openBatchButton.addEventListener("click", () => {
   batchResults().forEach((result) => window.open(result.url, "_blank", "noopener"));
 });
 
-els.clearHistoryButton.addEventListener("click", () => {
+els.clearHistoryButton.addEventListener("click", async () => {
+  await appReady;
   state.history = [];
   persist();
   renderHistory();
 });
 
-els.settingsButton.addEventListener("click", () => {
+els.settingsButton.addEventListener("click", async () => {
+  await appReady;
   renderSettings();
   els.settingsDialog.showModal();
 });
@@ -94,6 +97,7 @@ els.exportButton.addEventListener("click", () => {
 
 els.importInput.addEventListener("change", async () => {
   try {
+    await appReady;
     const file = els.importInput.files?.[0];
     if (!file) return;
     const text = await file.text();
@@ -111,6 +115,7 @@ els.importInput.addEventListener("change", async () => {
 async function start() {
   state = await loadState();
   setSaveStatus("設定を読み込みました");
+  els.settingsButton.disabled = false;
   render();
   hydrateFromUrl();
 }
