@@ -5,7 +5,8 @@ const DB_STORE = "settings";
 const CHATGPT_APP_URL = "https://chatgpt.com/?q={query}";
 const GOOGLE_MAPS_APP_URL = "https://www.google.com/maps/search/?api=1&query={query}";
 const GROK_APP_URL = "https://grok.com/?q={query}";
-const AUTO_ENABLED_PROVIDER_IDS = new Set(["grok"]);
+const AUTO_ENABLED_PROVIDER_IDS = new Set(["chatGPT", "grok", "perplexity"]);
+const AI_PROVIDER_IDS = ["grok", "chatGPT", "perplexity"];
 
 const categories = [
   { id: "all", label: "すべて" },
@@ -59,6 +60,8 @@ const els = {
   quickOpenSection: document.querySelector("#quickOpenSection"),
   quickOpenGrid: document.querySelector("#quickOpenGrid"),
   quickOpenAllButton: document.querySelector("#quickOpenAllButton"),
+  aiOpenBlock: document.querySelector("#aiOpenBlock"),
+  aiOpenGrid: document.querySelector("#aiOpenGrid"),
   launcherPanel: document.querySelector("#launcherPanel"),
   launcherTitle: document.querySelector("#launcherTitle"),
   launcherMeta: document.querySelector("#launcherMeta"),
@@ -288,23 +291,16 @@ function renderQuickOpen() {
   const query = quickOpenQuery();
   if (!query) {
     els.quickOpenSection.hidden = true;
+    renderAiOpen([]);
     return;
   }
 
   els.quickOpenSection.hidden = false;
   quickOpenResults(query).forEach((result) => {
     const externalApp = isExternalAppResult(result);
-    const link = document.createElement("a");
-    link.className = `quick-open-button${externalApp ? " app-quick-open-button" : ""}`;
-    link.href = result.url;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.innerHTML = `
-      <span class="quick-open-icon" aria-hidden="true">${escapeHtml(result.provider.icon)}</span>
-      <span>${escapeHtml(shortProviderName(result.provider.name))}</span>
-    `;
-    els.quickOpenGrid.append(link);
+    els.quickOpenGrid.append(createQuickOpenLink(result, externalApp));
   });
+  renderAiOpen(aiOpenResults(query));
 }
 
 function quickOpenQuery() {
@@ -312,7 +308,7 @@ function quickOpenQuery() {
 }
 
 function quickOpenResults(query) {
-  const preferred = ["google", "googleImages", "wikipediaJA", "weblio", "monokakido", "grok", "googleMaps", "chatGPT"];
+  const preferred = ["google", "googleImages", "wikipediaJA", "weblio", "monokakido", "googleMaps"];
   const providerResults = state.providers
     .filter((providerItem) => providerItem.enabled)
     .map((providerItem) => ({
@@ -324,6 +320,49 @@ function quickOpenResults(query) {
     .map((id) => byId.get(id))
     .filter(Boolean)
     .slice(0, 8);
+}
+
+function aiOpenResults(query) {
+  const byId = new Map(
+    state.providers
+      .filter((providerItem) => providerItem.enabled && providerItem.category === "ai")
+      .map((providerItem) => [
+        providerItem.id,
+        {
+          provider: providerItem,
+          url: renderUrl(providerItem.template, query),
+        },
+      ]),
+  );
+  return AI_PROVIDER_IDS.map((id) => byId.get(id)).filter(Boolean);
+}
+
+function renderAiOpen(aiResults) {
+  if (!els.aiOpenBlock || !els.aiOpenGrid) return;
+  els.aiOpenGrid.innerHTML = "";
+  els.aiOpenBlock.hidden = aiResults.length === 0;
+  aiResults.forEach((result) => {
+    els.aiOpenGrid.append(createQuickOpenLink(result, false, "ai-open-button"));
+  });
+}
+
+function createQuickOpenLink(result, externalApp, extraClass = "") {
+  const link = document.createElement("a");
+  const classes = [
+    "quick-open-button",
+    `provider-${result.provider.id}`,
+    externalApp ? "app-quick-open-button" : "",
+    extraClass,
+  ].filter(Boolean);
+  link.className = classes.join(" ");
+  link.href = result.url;
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.innerHTML = `
+    <span class="quick-open-icon" aria-hidden="true">${escapeHtml(result.provider.icon)}</span>
+    <span>${escapeHtml(shortProviderName(result.provider.name))}</span>
+  `;
+  return link;
 }
 
 function shortProviderName(name) {

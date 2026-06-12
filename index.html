@@ -10,7 +10,7 @@
     <title>MultiLookup</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./assets/icon-192.png" />
-    <link rel="stylesheet" href="./styles.css?v=13" />
+    <link rel="stylesheet" href="./styles.css?v=14" />
   </head>
   <body>
     <main class="app-shell">
@@ -46,22 +46,30 @@
             <button class="text-button" id="quickOpenAllButton" type="button">連続</button>
           </div>
           <div class="quick-open-grid" id="quickOpenGrid"></div>
-        </section>
-
-        <section class="section-block">
-          <div class="section-heading">
-            <h2>カテゴリ</h2>
+          <div class="ai-open-block" id="aiOpenBlock" hidden>
+            <div class="ai-open-label">AIで開く</div>
+            <div class="ai-open-grid" id="aiOpenGrid"></div>
           </div>
-          <div class="category-list" id="categoryList" role="tablist" aria-label="カテゴリ"></div>
         </section>
 
-        <section class="section-block">
-          <div class="section-heading">
-            <h2>検索履歴</h2>
-            <button class="text-button" id="clearHistoryButton" type="button">消去</button>
+        <details class="section-block collapsible-section">
+          <summary>
+            <span>カテゴリ</span>
+            <span aria-hidden="true">開く</span>
+          </summary>
+          <div class="category-list" id="categoryList" role="tablist" aria-label="カテゴリ"></div>
+        </details>
+
+        <details class="section-block collapsible-section">
+          <summary>
+            <span>検索履歴</span>
+            <span aria-hidden="true">開く</span>
+          </summary>
+          <div class="collapsible-actions">
+            <button class="text-button" id="clearHistoryButton" type="button">履歴を消去</button>
           </div>
           <div class="history-list" id="historyList"></div>
-        </section>
+        </details>
       </section>
 
       <section class="results-pane" aria-label="検索結果">
@@ -120,6 +128,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=13" type="module"></script>
+    <script src="./app.js?v=14" type="module"></script>
   </body>
 </html>

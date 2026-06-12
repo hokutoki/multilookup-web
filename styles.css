@@ -199,7 +199,7 @@ p {
 }
 
 .section-block {
-  margin-top: 28px;
+  margin-top: 18px;
 }
 
 .quick-open-section {
@@ -249,7 +249,8 @@ p {
 .category-list,
 .history-list,
 .provider-settings,
-.quick-open-grid {
+.quick-open-grid,
+.ai-open-grid {
   display: grid;
   gap: 8px;
 }
@@ -259,6 +260,9 @@ p {
 }
 
 .quick-open-button {
+  --button-start: #12a9a1;
+  --button-end: #0b9b94;
+  --button-shadow: rgba(11, 155, 148, 0.16);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -267,16 +271,72 @@ p {
   padding: 0 9px;
   border-radius: var(--radius);
   color: #fff;
-  background: linear-gradient(180deg, #12a9a1 0%, var(--accent) 100%);
+  background: linear-gradient(180deg, var(--button-start) 0%, var(--button-end) 100%);
   text-decoration: none;
   font-size: 14px;
   font-weight: 800;
-  box-shadow: 0 8px 18px rgba(11, 155, 148, 0.16);
+  box-shadow: 0 8px 18px var(--button-shadow);
 }
 
 .app-quick-open-button {
-  background: linear-gradient(180deg, #3268b4 0%, var(--app-blue) 100%);
-  box-shadow: 0 8px 18px rgba(40, 90, 159, 0.18);
+  --button-start: #3268b4;
+  --button-end: var(--app-blue);
+  --button-shadow: rgba(40, 90, 159, 0.18);
+}
+
+.provider-google {
+  --button-start: #2d8cff;
+  --button-end: #1768d6;
+  --button-shadow: rgba(23, 104, 214, 0.2);
+}
+
+.provider-googleImages {
+  --button-start: #f05f88;
+  --button-end: #c83c68;
+  --button-shadow: rgba(200, 60, 104, 0.2);
+}
+
+.provider-wikipediaJA {
+  --button-start: #6b7280;
+  --button-end: #374151;
+  --button-shadow: rgba(55, 65, 81, 0.18);
+}
+
+.provider-weblio {
+  --button-start: #16a36a;
+  --button-end: #08784c;
+  --button-shadow: rgba(8, 120, 76, 0.18);
+}
+
+.provider-monokakido {
+  --button-start: #3268b4;
+  --button-end: #285a9f;
+  --button-shadow: rgba(40, 90, 159, 0.22);
+}
+
+.provider-grok {
+  --button-start: #2b3137;
+  --button-end: #111827;
+  --button-shadow: rgba(17, 24, 39, 0.22);
+}
+
+.provider-chatGPT {
+  --button-start: #19a37f;
+  --button-end: #0d7c65;
+  --button-shadow: rgba(13, 124, 101, 0.2);
+}
+
+.provider-perplexity {
+  --button-start: #7557d9;
+  --button-end: #5235ad;
+  --button-shadow: rgba(82, 53, 173, 0.22);
+}
+
+.provider-googleMaps,
+.provider-appleMaps {
+  --button-start: #f6a623;
+  --button-end: #c77700;
+  --button-shadow: rgba(199, 119, 0, 0.2);
 }
 
 .quick-open-icon {
@@ -287,6 +347,82 @@ p {
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.18);
   font-size: 13px;
+}
+
+.ai-open-block {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #dbe7e8;
+}
+
+.ai-open-block[hidden] {
+  display: none;
+}
+
+.ai-open-label {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ai-open-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ai-open-button {
+  min-height: 44px;
+}
+
+.collapsible-section {
+  border: 1px solid #e1eaea;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.collapsible-section summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+  padding: 0 13px;
+  color: var(--text);
+  list-style: none;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.collapsible-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-section summary span:last-child {
+  color: var(--accent-dark);
+  font-size: 13px;
+}
+
+.collapsible-section[open] summary {
+  border-bottom: 1px solid #e1eaea;
+}
+
+.collapsible-section[open] summary span:last-child {
+  font-size: 0;
+}
+
+.collapsible-section[open] summary span:last-child::after {
+  content: "閉じる";
+  font-size: 13px;
+}
+
+.collapsible-section .category-list,
+.collapsible-section .history-list {
+  padding: 10px;
+}
+
+.collapsible-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 10px 0;
 }
 
 .category-list {
