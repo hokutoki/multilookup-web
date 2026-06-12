@@ -245,7 +245,11 @@ function renderResults() {
         <p>${escapeHtml(result.url)}</p>
       </a>
       <div class="result-actions">
-        ${externalApp ? `<span class="app-badge">専用</span>` : ""}
+        ${
+          externalApp
+            ? `<a class="app-open-button" href="${escapeAttribute(result.url)}" target="_blank" rel="noopener" aria-label="${escapeHtml(result.provider.name)}を開く">物書堂を開く</a>`
+            : ""
+        }
         <button class="small-button" type="button" data-copy="${escapeHtml(result.provider.id)}" aria-label="${escapeHtml(result.provider.name)}のURLをコピー">⧉</button>
       </div>
     `;
