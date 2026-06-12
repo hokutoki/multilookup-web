@@ -305,7 +305,7 @@ p {
 
 .result-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .launcher-panel {
@@ -337,8 +337,8 @@ p {
 
 .result-card {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
-  gap: 14px;
+  grid-template-columns: 42px minmax(0, 1fr) minmax(178px, auto);
+  gap: 12px;
   align-items: center;
   min-width: 0;
   box-shadow: 0 6px 18px rgba(15, 34, 46, 0.045);
@@ -377,17 +377,23 @@ p {
   margin-top: 4px;
   color: var(--muted);
   font-size: 13px;
+  line-height: 1.35;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .result-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(96px, 1fr) minmax(76px, auto);
   gap: 8px;
   align-items: center;
 }
 
 .app-result-card {
-  grid-template-columns: 42px minmax(0, 1fr) minmax(150px, auto);
+  grid-template-columns: 42px minmax(0, 1fr) minmax(210px, auto);
 }
 
 .small-button {
@@ -405,6 +411,7 @@ p {
   font-weight: 700;
 }
 
+.open-button,
 .app-open-button {
   display: inline-flex;
   align-items: center;
@@ -418,6 +425,11 @@ p {
   white-space: nowrap;
   font-weight: 700;
   box-shadow: 0 10px 24px rgba(40, 90, 159, 0.2);
+}
+
+.open-button {
+  background: linear-gradient(180deg, #12a9a1 0%, var(--accent) 100%);
+  box-shadow: 0 10px 22px rgba(11, 155, 148, 0.18);
 }
 
 .helper-shell {
@@ -597,7 +609,8 @@ p {
 
   .result-card {
     grid-template-columns: 38px minmax(0, 1fr);
-    gap: 10px;
+    gap: 9px 10px;
+    padding: 12px;
   }
 
   .app-result-card {
@@ -610,20 +623,28 @@ p {
     height: 38px;
   }
 
+  .result-card p {
+    -webkit-line-clamp: 1;
+  }
+
   .result-actions {
     grid-column: 1 / -1;
     display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(88px, auto);
     gap: 8px;
   }
 
+  .open-button,
   .app-open-button {
-    min-height: 52px;
+    min-height: 50px;
     width: 100%;
     font-size: 17px;
   }
 
   .small-button {
     width: 100%;
+    min-width: 88px;
+    min-height: 50px;
   }
 
   .launcher-panel {

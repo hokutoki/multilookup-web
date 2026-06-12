@@ -245,11 +245,9 @@ function renderResults() {
         <p>${escapeHtml(result.url)}</p>
       </a>
       <div class="result-actions">
-        ${
-          externalApp
-            ? `<a class="app-open-button" href="${escapeAttribute(result.url)}" target="_blank" rel="noopener" aria-label="${escapeHtml(result.provider.name)}を開く">物書堂を開く</a>`
-            : ""
-        }
+        <a class="${externalApp ? "app-open-button" : "open-button"}" href="${escapeAttribute(result.url)}" target="_blank" rel="noopener" aria-label="${escapeHtml(result.provider.name)}を開く">
+          ${externalApp ? "物書堂を開く" : "開く"}
+        </a>
         <button class="small-button" type="button" data-copy="${escapeHtml(result.provider.id)}" aria-label="${escapeHtml(result.provider.name)}のURLをコピー">
           <span aria-hidden="true">⧉</span>
           <span>コピー</span>
