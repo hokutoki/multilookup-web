@@ -300,6 +300,11 @@ p {
   min-width: 0;
 }
 
+.app-result-card {
+  border-color: #c9d8e8;
+  background: #f8fbff;
+}
+
 .result-link {
   display: block;
   min-width: 0;
@@ -342,6 +347,51 @@ p {
   border-radius: var(--radius);
   color: var(--accent-dark);
   background: var(--surface-soft);
+}
+
+.app-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  color: #344054;
+  background: #eef4ff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.helper-shell {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: max(22px, env(safe-area-inset-top)) 18px max(22px, env(safe-area-inset-bottom));
+}
+
+.helper-panel {
+  width: min(560px, 100%);
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.helper-query {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  font-size: 18px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.helper-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .quick-setting {
@@ -458,6 +508,7 @@ p {
 
   .result-actions {
     display: grid;
+    gap: 8px;
   }
 
   .small-button {
@@ -471,6 +522,10 @@ p {
 
   .compact-button {
     width: 100%;
+  }
+
+  .helper-actions {
+    flex-direction: column;
   }
 
   .category-list {

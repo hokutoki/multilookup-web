@@ -2,7 +2,7 @@ const STORAGE_KEY = "multilookup.web.state.v1";
 const DB_NAME = "multilookup-web";
 const DB_VERSION = 1;
 const DB_STORE = "settings";
-const CHATGPT_WEB_URL = "https://chatgpt.com/?hints=search&q={query}";
+const CHATGPT_WEB_URL = "./chatgpt-web.html?q={query}";
 
 const categories = [
   { id: "all", label: "すべて" },
@@ -20,7 +20,7 @@ const defaultProviders = [
   provider("googleImages", "Google画像検索", "画", "general", "https://www.google.com/search?tbm=isch&q={query}", true, false),
   provider("wikipediaJA", "Wikipedia日本語", "W", "encyclopedia", "https://ja.wikipedia.org/wiki/Special:Search?search={query}", true, true),
   provider("weblio", "Weblio", "W", "dictionary", "https://www.weblio.jp/content/{query}", true, true),
-  provider("monokakido", "物書堂", "物", "dictionary", "mkdictionaries:///?text={query}&usePasteboardText=YES&scope=headword", true, false),
+  provider("monokakido", "物書堂", "物", "dictionary", "mkdictionaries:///?text={query}&usePasteboardText=YES&scope=headword", true, false, "externalApp"),
   provider("appleMaps", "Appleマップ", "地", "map", "https://maps.apple.com/?q={query}", false, false),
   provider("googleMaps", "Googleマップ", "地", "map", "https://www.google.com/maps/search/?api=1&query={query}", false, false),
   provider("youtube", "YouTube", "▶", "video", "https://www.youtube.com/results?search_query={query}", false, false),
@@ -30,8 +30,8 @@ const defaultProviders = [
   provider("perplexity", "Perplexity", "P", "ai", "https://www.perplexity.ai/search?q={query}", false, false),
 ];
 
-function provider(id, name, icon, category, template, enabled, batch) {
-  return { id, name, icon, category, template, enabled, batch };
+function provider(id, name, icon, category, template, enabled, batch, mode = "web") {
+  return { id, name, icon, category, template, enabled, batch, mode };
 }
 
 let state = normalizeState({});
@@ -154,9 +154,10 @@ function runSearch(rawQuery, options = {}) {
   renderHistory();
   renderResults();
   lastAutoOpenedUrl = "";
-  if (options.openFirst && results[0]) {
-    lastAutoOpenedUrl = results[0].url;
-    openResult(results[0]);
+  const firstWebResult = webResults()[0];
+  if (options.openFirst && firstWebResult) {
+    lastAutoOpenedUrl = firstWebResult.url;
+    openResult(firstWebResult);
   }
 }
 
@@ -233,8 +234,9 @@ function renderResults() {
   renderLauncher();
 
   results.forEach((result) => {
+    const externalApp = isExternalAppResult(result);
     const card = document.createElement("article");
-    card.className = "result-card";
+    card.className = `result-card${externalApp ? " app-result-card" : ""}`;
     card.innerHTML = `
       <div class="provider-icon" aria-hidden="true">${escapeHtml(result.provider.icon)}</div>
       <a class="result-link" href="${escapeAttribute(result.url)}" target="_blank" rel="noopener">
@@ -242,6 +244,7 @@ function renderResults() {
         <p>${escapeHtml(result.url)}</p>
       </a>
       <div class="result-actions">
+        ${externalApp ? `<span class="app-badge">専用</span>` : ""}
         <button class="small-button" type="button" data-copy="${escapeHtml(result.provider.id)}" aria-label="${escapeHtml(result.provider.name)}のURLをコピー">⧉</button>
       </div>
     `;
@@ -342,7 +345,15 @@ function filteredProviders() {
 }
 
 function batchResults() {
-  return results.filter((result) => result.provider.batch).slice(0, 3);
+  return webResults().filter((result) => result.provider.batch).slice(0, 3);
+}
+
+function webResults() {
+  return results.filter((result) => !isExternalAppResult(result));
+}
+
+function isExternalAppResult(result) {
+  return result.provider.mode === "externalApp";
 }
 
 function renderUrl(template, query) {
