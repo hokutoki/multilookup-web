@@ -37,6 +37,10 @@ let state = normalizeState({});
 let activeCategory = "all";
 let currentQuery = "";
 let results = [];
+let isReady = false;
+let launchQueue = [];
+let launchIndex = 0;
+let lastAutoOpenedUrl = "";
 
 const els = {
   queryInput: document.querySelector("#queryInput"),
@@ -47,10 +51,15 @@ const els = {
   resultTitle: document.querySelector("#resultTitle"),
   resultMeta: document.querySelector("#resultMeta"),
   openBatchButton: document.querySelector("#openBatchButton"),
+  launcherPanel: document.querySelector("#launcherPanel"),
+  launcherTitle: document.querySelector("#launcherTitle"),
+  launcherMeta: document.querySelector("#launcherMeta"),
+  openNextButton: document.querySelector("#openNextButton"),
   clearHistoryButton: document.querySelector("#clearHistoryButton"),
   settingsButton: document.querySelector("#settingsButton"),
   settingsDialog: document.querySelector("#settingsDialog"),
   providerSettings: document.querySelector("#providerSettings"),
+  quickOpenInput: document.querySelector("#quickOpenInput"),
   exportButton: document.querySelector("#exportButton"),
   importInput: document.querySelector("#importInput"),
   saveStatus: document.querySelector("#saveStatus"),
@@ -62,14 +71,18 @@ if ("serviceWorker" in navigator) {
 
 const appReady = start();
 
-els.searchForm.addEventListener("submit", async (event) => {
+els.searchForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  await appReady;
-  runSearch(els.queryInput.value);
+  if (!isReady) return;
+  runSearch(els.queryInput.value, { openFirst: state.quickOpen });
 });
 
 els.openBatchButton.addEventListener("click", () => {
-  batchResults().forEach((result) => window.open(result.url, "_blank", "noopener"));
+  startLauncher();
+});
+
+els.openNextButton.addEventListener("click", () => {
+  openNextQueuedResult();
 });
 
 els.clearHistoryButton.addEventListener("click", async () => {
@@ -114,16 +127,19 @@ els.importInput.addEventListener("change", async () => {
 
 async function start() {
   state = await loadState();
+  isReady = true;
   setSaveStatus("設定を読み込みました");
   els.settingsButton.disabled = false;
   render();
   hydrateFromUrl();
 }
 
-function runSearch(rawQuery) {
+function runSearch(rawQuery, options = {}) {
   const query = rawQuery.trim();
   if (!query) return;
   currentQuery = query;
+  launchQueue = [];
+  launchIndex = 0;
   state.history = [query, ...state.history.filter((item) => item !== query)].slice(0, 20);
   results = filteredProviders()
     .filter((provider) => provider.enabled)
@@ -134,6 +150,11 @@ function runSearch(rawQuery) {
   persist();
   renderHistory();
   renderResults();
+  lastAutoOpenedUrl = "";
+  if (options.openFirst && results[0]) {
+    lastAutoOpenedUrl = results[0].url;
+    openResult(results[0]);
+  }
 }
 
 function hydrateFromUrl() {
@@ -187,7 +208,7 @@ function renderHistory() {
     button.innerHTML = `<span>◷ ${escapeHtml(item)}</span><span>›</span>`;
     button.addEventListener("click", () => {
       els.queryInput.value = item;
-      runSearch(item);
+      runSearch(item, { openFirst: state.quickOpen });
     });
     els.historyList.append(button);
   });
@@ -199,39 +220,72 @@ function renderResults() {
     els.resultTitle.textContent = "検索語を入力";
     els.resultMeta.textContent = "左の入力欄に言葉を入れて検索します。";
     els.openBatchButton.disabled = true;
+    renderLauncher();
     return;
   }
 
   els.resultTitle.textContent = currentQuery;
   els.resultMeta.textContent = `${results.length}件の検索先 / ${new Date().toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" })}`;
   els.openBatchButton.disabled = batchResults().length === 0;
+  renderLauncher();
 
   results.forEach((result) => {
     const card = document.createElement("article");
     card.className = "result-card";
     card.innerHTML = `
       <div class="provider-icon" aria-hidden="true">${escapeHtml(result.provider.icon)}</div>
-      <div>
+      <a class="result-link" href="${escapeAttribute(result.url)}" target="_blank" rel="noopener">
         <h3>${escapeHtml(result.provider.name)}</h3>
         <p>${escapeHtml(result.url)}</p>
-      </div>
+      </a>
       <div class="result-actions">
-        <button class="small-button" type="button" data-open="${escapeHtml(result.provider.id)}" aria-label="${escapeHtml(result.provider.name)}を開く">↗</button>
         <button class="small-button" type="button" data-copy="${escapeHtml(result.provider.id)}" aria-label="${escapeHtml(result.provider.name)}のURLをコピー">⧉</button>
       </div>
     `;
-    card.querySelector("[data-open]").addEventListener("click", () => {
-      window.open(result.url, "_blank", "noopener");
-    });
     card.querySelector("[data-copy]").addEventListener("click", async () => {
-      await navigator.clipboard.writeText(result.url);
+      await copyText(result.url);
     });
     els.resultList.append(card);
   });
 }
 
+function startLauncher() {
+  launchQueue = batchResults();
+  launchIndex = launchQueue[0]?.url === lastAutoOpenedUrl ? 1 : 0;
+  openNextQueuedResult();
+  renderLauncher();
+}
+
+function openNextQueuedResult() {
+  const result = launchQueue[launchIndex];
+  if (!result) return;
+  launchIndex += 1;
+  openResult(result);
+  renderLauncher();
+}
+
+function renderLauncher() {
+  if (!els.launcherPanel) return;
+  const hasQueue = launchQueue.length > 0 && launchIndex < launchQueue.length;
+  els.launcherPanel.hidden = !hasQueue;
+  if (!hasQueue) return;
+  const result = launchQueue[launchIndex];
+  els.launcherTitle.textContent = `次: ${result.provider.name}`;
+  els.launcherMeta.textContent = `${launchIndex + 1}/${launchQueue.length}件目を開きます`;
+}
+
+function openResult(result) {
+  if (!result) return;
+  window.open(result.url, "_blank", "noopener");
+}
+
 function renderSettings() {
   els.providerSettings.innerHTML = "";
+  els.quickOpenInput.checked = state.quickOpen;
+  els.quickOpenInput.onchange = () => {
+    state.quickOpen = els.quickOpenInput.checked;
+    persist();
+  };
   state.providers.forEach((providerItem, index) => {
     const row = document.createElement("div");
     row.className = "provider-row";
@@ -310,6 +364,7 @@ function normalizeState(value) {
   return {
     providers,
     history: Array.isArray(value.history) ? value.history.slice(0, 20) : [],
+    quickOpen: typeof value.quickOpen === "boolean" ? value.quickOpen : true,
   };
 }
 
@@ -394,4 +449,21 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replaceAll("`", "&#096;");
+}
+
+async function copyText(value) {
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch {
+    const input = document.createElement("input");
+    input.value = value;
+    document.body.append(input);
+    input.select();
+    document.execCommand("copy");
+    input.remove();
+  }
 }
