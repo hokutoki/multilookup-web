@@ -54,6 +54,9 @@ const els = {
   resultTitle: document.querySelector("#resultTitle"),
   resultMeta: document.querySelector("#resultMeta"),
   openBatchButton: document.querySelector("#openBatchButton"),
+  quickOpenSection: document.querySelector("#quickOpenSection"),
+  quickOpenGrid: document.querySelector("#quickOpenGrid"),
+  quickOpenAllButton: document.querySelector("#quickOpenAllButton"),
   launcherPanel: document.querySelector("#launcherPanel"),
   launcherTitle: document.querySelector("#launcherTitle"),
   launcherMeta: document.querySelector("#launcherMeta"),
@@ -81,6 +84,10 @@ els.searchForm.addEventListener("submit", (event) => {
 });
 
 els.openBatchButton.addEventListener("click", () => {
+  startLauncher();
+});
+
+els.quickOpenAllButton.addEventListener("click", () => {
   startLauncher();
 });
 
@@ -154,6 +161,7 @@ function runSearch(rawQuery, options = {}) {
   persist();
   renderHistory();
   renderResults();
+  renderQuickOpen();
   lastAutoOpenedUrl = "";
   const firstWebResult = webResults()[0];
   if (options.openFirst && firstWebResult) {
@@ -179,6 +187,7 @@ function render() {
   renderCategories();
   renderHistory();
   renderResults();
+  renderQuickOpen();
 }
 
 function renderCategories() {
@@ -226,6 +235,7 @@ function renderResults() {
     els.resultMeta.textContent = "左の入力欄に言葉を入れて検索します。";
     els.openBatchButton.disabled = true;
     renderLauncher();
+    renderQuickOpen();
     return;
   }
 
@@ -259,6 +269,47 @@ function renderResults() {
     });
     els.resultList.append(card);
   });
+}
+
+function renderQuickOpen() {
+  if (!els.quickOpenSection || !els.quickOpenGrid) return;
+  els.quickOpenGrid.innerHTML = "";
+  if (!currentQuery || results.length === 0) {
+    els.quickOpenSection.hidden = true;
+    return;
+  }
+
+  els.quickOpenSection.hidden = false;
+  quickOpenResults().forEach((result) => {
+    const externalApp = isExternalAppResult(result);
+    const link = document.createElement("a");
+    link.className = `quick-open-button${externalApp ? " app-quick-open-button" : ""}`;
+    link.href = result.url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.innerHTML = `
+      <span class="quick-open-icon" aria-hidden="true">${escapeHtml(result.provider.icon)}</span>
+      <span>${escapeHtml(shortProviderName(result.provider.name))}</span>
+    `;
+    els.quickOpenGrid.append(link);
+  });
+}
+
+function quickOpenResults() {
+  const preferred = ["google", "googleImages", "wikipediaJA", "weblio", "monokakido", "googleMaps", "chatGPT"];
+  const byId = new Map(results.map((result) => [result.provider.id, result]));
+  return preferred
+    .map((id) => byId.get(id))
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
+function shortProviderName(name) {
+  return name
+    .replace("Google検索", "Google")
+    .replace("Google画像検索", "画像")
+    .replace("Wikipedia日本語", "Wiki")
+    .replace("Googleマップ", "地図");
 }
 
 function startLauncher() {

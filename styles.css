@@ -202,6 +202,23 @@ p {
   margin-top: 28px;
 }
 
+.quick-open-section {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #d7e7e8;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-soft);
+}
+
+.quick-open-section[hidden] {
+  display: none;
+}
+
+.compact-heading {
+  margin-bottom: 10px;
+}
+
 .section-heading {
   margin-bottom: 12px;
 }
@@ -231,9 +248,45 @@ p {
 
 .category-list,
 .history-list,
-.provider-settings {
+.provider-settings,
+.quick-open-grid {
   display: grid;
   gap: 8px;
+}
+
+.quick-open-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.quick-open-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 48px;
+  padding: 0 9px;
+  border-radius: var(--radius);
+  color: #fff;
+  background: linear-gradient(180deg, #12a9a1 0%, var(--accent) 100%);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(11, 155, 148, 0.16);
+}
+
+.app-quick-open-button {
+  background: linear-gradient(180deg, #3268b4 0%, var(--app-blue) 100%);
+  box-shadow: 0 8px 18px rgba(40, 90, 159, 0.18);
+}
+
+.quick-open-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 13px;
 }
 
 .category-list {
@@ -275,6 +328,15 @@ p {
   color: var(--accent-dark);
   background: transparent;
   font-size: 14px;
+}
+
+.compact-heading .text-button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid #cbe1e1;
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  font-weight: 800;
 }
 
 .results-pane {
@@ -591,6 +653,21 @@ p {
 
   .search-panel {
     margin-top: 18px;
+  }
+
+  .quick-open-section {
+    margin-top: 12px;
+    padding: 10px;
+  }
+
+  .quick-open-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .quick-open-button {
+    min-height: 46px;
+    font-size: 13px;
   }
 
   .results-pane {

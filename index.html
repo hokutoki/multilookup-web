@@ -10,7 +10,7 @@
     <title>MultiLookup</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./assets/icon-192.png" />
-    <link rel="stylesheet" href="./styles.css?v=10" />
+    <link rel="stylesheet" href="./styles.css?v=11" />
   </head>
   <body>
     <main class="app-shell">
@@ -39,6 +39,14 @@
             検索
           </button>
         </form>
+
+        <section class="quick-open-section" id="quickOpenSection" hidden>
+          <div class="section-heading compact-heading">
+            <h2>すぐ開く</h2>
+            <button class="text-button" id="quickOpenAllButton" type="button">連続</button>
+          </div>
+          <div class="quick-open-grid" id="quickOpenGrid"></div>
+        </section>
 
         <section class="section-block">
           <div class="section-heading">
@@ -112,6 +120,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=10" type="module"></script>
+    <script src="./app.js?v=11" type="module"></script>
   </body>
 </html>
