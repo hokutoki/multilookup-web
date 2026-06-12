@@ -1,0 +1,301 @@
+const STORAGE_KEY = "multilookup.web.state.v1";
+
+const categories = [
+  { id: "all", label: "すべて" },
+  { id: "general", label: "検索" },
+  { id: "dictionary", label: "辞書・辞典" },
+  { id: "encyclopedia", label: "百科事典" },
+  { id: "map", label: "地図" },
+  { id: "video", label: "動画" },
+  { id: "law", label: "法令" },
+  { id: "ai", label: "AI" },
+];
+
+const defaultProviders = [
+  provider("google", "Google検索", "G", "general", "https://www.google.com/search?q={query}", true, true),
+  provider("googleImages", "Google画像検索", "画", "general", "https://www.google.com/search?tbm=isch&q={query}", true, false),
+  provider("wikipediaJA", "Wikipedia日本語", "W", "encyclopedia", "https://ja.wikipedia.org/wiki/Special:Search?search={query}", true, true),
+  provider("weblio", "Weblio", "W", "dictionary", "https://www.weblio.jp/content/{query}", true, true),
+  provider("monokakido", "物書堂", "物", "dictionary", "mkdictionaries:///?text={query}&usePasteboardText=YES&scope=headword", true, false),
+  provider("appleMaps", "Appleマップ", "地", "map", "https://maps.apple.com/?q={query}", false, false),
+  provider("googleMaps", "Googleマップ", "地", "map", "https://www.google.com/maps/search/?api=1&query={query}", false, false),
+  provider("youtube", "YouTube", "▶", "video", "https://www.youtube.com/results?search_query={query}", false, false),
+  provider("eGovLaw", "e-Gov法令検索", "法", "law", "https://laws.e-gov.go.jp/result?searchType=keyword&searchText={query}", false, false),
+  provider("chatGPT", "ChatGPT", "AI", "ai", "https://chatgpt.com/?q={query}", false, false),
+  provider("grok", "Grok", "G", "ai", "https://grok.com/?q={query}", false, false),
+  provider("perplexity", "Perplexity", "P", "ai", "https://www.perplexity.ai/search?q={query}", false, false),
+];
+
+function provider(id, name, icon, category, template, enabled, batch) {
+  return { id, name, icon, category, template, enabled, batch };
+}
+
+let state = loadState();
+let activeCategory = "all";
+let currentQuery = "";
+let results = [];
+
+const els = {
+  queryInput: document.querySelector("#queryInput"),
+  searchForm: document.querySelector("#searchForm"),
+  categoryList: document.querySelector("#categoryList"),
+  historyList: document.querySelector("#historyList"),
+  resultList: document.querySelector("#resultList"),
+  resultTitle: document.querySelector("#resultTitle"),
+  resultMeta: document.querySelector("#resultMeta"),
+  openBatchButton: document.querySelector("#openBatchButton"),
+  clearHistoryButton: document.querySelector("#clearHistoryButton"),
+  settingsButton: document.querySelector("#settingsButton"),
+  settingsDialog: document.querySelector("#settingsDialog"),
+  providerSettings: document.querySelector("#providerSettings"),
+  exportButton: document.querySelector("#exportButton"),
+  importInput: document.querySelector("#importInput"),
+};
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
+}
+
+render();
+hydrateFromUrl();
+
+els.searchForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  runSearch(els.queryInput.value);
+});
+
+els.openBatchButton.addEventListener("click", () => {
+  batchResults().forEach((result) => window.open(result.url, "_blank", "noopener"));
+});
+
+els.clearHistoryButton.addEventListener("click", () => {
+  state.history = [];
+  persist();
+  renderHistory();
+});
+
+els.settingsButton.addEventListener("click", () => {
+  renderSettings();
+  els.settingsDialog.showModal();
+});
+
+els.exportButton.addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "multilookup-settings.json";
+  anchor.click();
+  URL.revokeObjectURL(url);
+});
+
+els.importInput.addEventListener("change", async () => {
+  const file = els.importInput.files?.[0];
+  if (!file) return;
+  const text = await file.text();
+  const imported = JSON.parse(text);
+  state = normalizeState(imported);
+  persist();
+  render();
+  renderSettings();
+  els.importInput.value = "";
+});
+
+function runSearch(rawQuery) {
+  const query = rawQuery.trim();
+  if (!query) return;
+  currentQuery = query;
+  state.history = [query, ...state.history.filter((item) => item !== query)].slice(0, 20);
+  results = filteredProviders()
+    .filter((provider) => provider.enabled)
+    .map((provider) => ({
+      provider,
+      url: renderUrl(provider.template, query),
+    }));
+  persist();
+  renderHistory();
+  renderResults();
+}
+
+function hydrateFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const query = params.get("q");
+  const category = params.get("category");
+  if (category && categories.some((item) => item.id === category)) {
+    activeCategory = category;
+  }
+  if (query) {
+    els.queryInput.value = query;
+    runSearch(query);
+  }
+}
+
+function render() {
+  renderCategories();
+  renderHistory();
+  renderResults();
+}
+
+function renderCategories() {
+  els.categoryList.innerHTML = "";
+  categories.forEach((category) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `category-button${activeCategory === category.id ? " active" : ""}`;
+    button.textContent = category.label;
+    button.addEventListener("click", () => {
+      activeCategory = category.id;
+      renderCategories();
+      if (currentQuery) runSearch(currentQuery);
+    });
+    els.categoryList.append(button);
+  });
+}
+
+function renderHistory() {
+  els.historyList.innerHTML = "";
+  if (state.history.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "settings-note";
+    empty.textContent = "履歴はまだありません";
+    els.historyList.append(empty);
+    return;
+  }
+  state.history.forEach((item) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "history-button";
+    button.innerHTML = `<span>◷ ${escapeHtml(item)}</span><span>›</span>`;
+    button.addEventListener("click", () => {
+      els.queryInput.value = item;
+      runSearch(item);
+    });
+    els.historyList.append(button);
+  });
+}
+
+function renderResults() {
+  els.resultList.innerHTML = "";
+  if (!currentQuery) {
+    els.resultTitle.textContent = "検索語を入力";
+    els.resultMeta.textContent = "左の入力欄に言葉を入れて検索します。";
+    els.openBatchButton.disabled = true;
+    return;
+  }
+
+  els.resultTitle.textContent = currentQuery;
+  els.resultMeta.textContent = `${results.length}件の検索先 / ${new Date().toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" })}`;
+  els.openBatchButton.disabled = batchResults().length === 0;
+
+  results.forEach((result) => {
+    const card = document.createElement("article");
+    card.className = "result-card";
+    card.innerHTML = `
+      <div class="provider-icon" aria-hidden="true">${escapeHtml(result.provider.icon)}</div>
+      <div>
+        <h3>${escapeHtml(result.provider.name)}</h3>
+        <p>${escapeHtml(result.url)}</p>
+      </div>
+      <div class="result-actions">
+        <button class="small-button" type="button" data-open="${escapeHtml(result.provider.id)}" aria-label="${escapeHtml(result.provider.name)}を開く">↗</button>
+        <button class="small-button" type="button" data-copy="${escapeHtml(result.provider.id)}" aria-label="${escapeHtml(result.provider.name)}のURLをコピー">⧉</button>
+      </div>
+    `;
+    card.querySelector("[data-open]").addEventListener("click", () => {
+      window.open(result.url, "_blank", "noopener");
+    });
+    card.querySelector("[data-copy]").addEventListener("click", async () => {
+      await navigator.clipboard.writeText(result.url);
+    });
+    els.resultList.append(card);
+  });
+}
+
+function renderSettings() {
+  els.providerSettings.innerHTML = "";
+  state.providers.forEach((providerItem, index) => {
+    const row = document.createElement("div");
+    row.className = "provider-row";
+    row.innerHTML = `
+      <input type="checkbox" ${providerItem.enabled ? "checked" : ""} aria-label="${escapeHtml(providerItem.name)}を有効化" />
+      <div>
+        <strong>${escapeHtml(providerItem.name)}</strong>
+        <small>${escapeHtml(providerItem.template)}</small>
+      </div>
+      <div class="move-buttons">
+        <button type="button" aria-label="${escapeHtml(providerItem.name)}を上へ">↑</button>
+        <button type="button" aria-label="${escapeHtml(providerItem.name)}を下へ">↓</button>
+      </div>
+    `;
+    row.querySelector("input").addEventListener("change", (event) => {
+      providerItem.enabled = event.target.checked;
+      persist();
+      if (currentQuery) runSearch(currentQuery);
+    });
+    const [upButton, downButton] = row.querySelectorAll(".move-buttons button");
+    upButton.disabled = index === 0;
+    downButton.disabled = index === state.providers.length - 1;
+    upButton.addEventListener("click", () => moveProvider(index, -1));
+    downButton.addEventListener("click", () => moveProvider(index, 1));
+    els.providerSettings.append(row);
+  });
+}
+
+function moveProvider(index, delta) {
+  const nextIndex = index + delta;
+  if (nextIndex < 0 || nextIndex >= state.providers.length) return;
+  const [item] = state.providers.splice(index, 1);
+  state.providers.splice(nextIndex, 0, item);
+  persist();
+  renderSettings();
+  if (currentQuery) runSearch(currentQuery);
+}
+
+function filteredProviders() {
+  if (activeCategory === "all") return state.providers;
+  return state.providers.filter((providerItem) => providerItem.category === activeCategory);
+}
+
+function batchResults() {
+  return results.filter((result) => result.provider.batch).slice(0, 3);
+}
+
+function renderUrl(template, query) {
+  return template.replaceAll("{query}", encodeURIComponent(query));
+}
+
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return normalizeState({});
+  try {
+    return normalizeState(JSON.parse(raw));
+  } catch {
+    return normalizeState({});
+  }
+}
+
+function normalizeState(value) {
+  const savedProviders = Array.isArray(value.providers) ? value.providers : [];
+  const savedById = new Map(savedProviders.map((item) => [item.id, item]));
+  const providers = defaultProviders.map((item) => ({ ...item, ...savedById.get(item.id) }));
+  savedProviders
+    .filter((item) => !providers.some((providerItem) => providerItem.id === item.id))
+    .forEach((item) => providers.push(item));
+  return {
+    providers,
+    history: Array.isArray(value.history) ? value.history.slice(0, 20) : [],
+  };
+}
+
+function persist() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
