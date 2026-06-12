@@ -2,6 +2,7 @@ const STORAGE_KEY = "multilookup.web.state.v1";
 const DB_NAME = "multilookup-web";
 const DB_VERSION = 1;
 const DB_STORE = "settings";
+const CHATGPT_WEB_URL = "https://chatgpt.com/?hints=search&q={query}";
 
 const categories = [
   { id: "all", label: "すべて" },
@@ -24,7 +25,7 @@ const defaultProviders = [
   provider("googleMaps", "Googleマップ", "地", "map", "https://www.google.com/maps/search/?api=1&query={query}", false, false),
   provider("youtube", "YouTube", "▶", "video", "https://www.youtube.com/results?search_query={query}", false, false),
   provider("eGovLaw", "e-Gov法令検索", "法", "law", "https://laws.e-gov.go.jp/result?searchType=keyword&searchText={query}", false, false),
-  provider("chatGPT", "ChatGPT", "AI", "ai", "https://chatgpt.com/?q={query}", false, false),
+  provider("chatGPT", "ChatGPT Web", "AI", "ai", CHATGPT_WEB_URL, false, false),
   provider("grok", "Grok", "G", "ai", "https://grok.com/?q={query}", false, false),
   provider("perplexity", "Perplexity", "P", "ai", "https://www.perplexity.ai/search?q={query}", false, false),
 ];
@@ -41,6 +42,7 @@ let isReady = false;
 let launchQueue = [];
 let launchIndex = 0;
 let lastAutoOpenedUrl = "";
+let openedUrlsForCurrentSearch = new Set();
 
 const els = {
   queryInput: document.querySelector("#queryInput"),
@@ -140,6 +142,7 @@ function runSearch(rawQuery, options = {}) {
   currentQuery = query;
   launchQueue = [];
   launchIndex = 0;
+  openedUrlsForCurrentSearch = new Set();
   state.history = [query, ...state.history.filter((item) => item !== query)].slice(0, 20);
   results = filteredProviders()
     .filter((provider) => provider.enabled)
@@ -250,14 +253,18 @@ function renderResults() {
 }
 
 function startLauncher() {
-  launchQueue = batchResults();
+  launchQueue = batchResults().filter((result) => !openedUrlsForCurrentSearch.has(result.url));
   launchIndex = launchQueue[0]?.url === lastAutoOpenedUrl ? 1 : 0;
   openNextQueuedResult();
   renderLauncher();
 }
 
 function openNextQueuedResult() {
-  const result = launchQueue[launchIndex];
+  let result = launchQueue[launchIndex];
+  while (result && openedUrlsForCurrentSearch.has(result.url)) {
+    launchIndex += 1;
+    result = launchQueue[launchIndex];
+  }
   if (!result) return;
   launchIndex += 1;
   openResult(result);
@@ -276,6 +283,11 @@ function renderLauncher() {
 
 function openResult(result) {
   if (!result) return;
+  if (openedUrlsForCurrentSearch.has(result.url)) {
+    renderLauncher();
+    return;
+  }
+  openedUrlsForCurrentSearch.add(result.url);
   window.open(result.url, "_blank", "noopener");
 }
 
@@ -357,7 +369,7 @@ function loadStateFromLocalStorage() {
 function normalizeState(value) {
   const savedProviders = Array.isArray(value.providers) ? value.providers : [];
   const savedById = new Map(savedProviders.map((item) => [item.id, item]));
-  const providers = defaultProviders.map((item) => ({ ...item, ...savedById.get(item.id) }));
+  const providers = defaultProviders.map((item) => mergeProvider(item, savedById.get(item.id)));
   savedProviders
     .filter((item) => !providers.some((providerItem) => providerItem.id === item.id))
     .forEach((item) => providers.push(item));
@@ -365,6 +377,15 @@ function normalizeState(value) {
     providers,
     history: Array.isArray(value.history) ? value.history.slice(0, 20) : [],
     quickOpen: typeof value.quickOpen === "boolean" ? value.quickOpen : true,
+  };
+}
+
+function mergeProvider(defaultProvider, savedProvider) {
+  if (!savedProvider) return { ...defaultProvider };
+  return {
+    ...defaultProvider,
+    enabled: typeof savedProvider.enabled === "boolean" ? savedProvider.enabled : defaultProvider.enabled,
+    batch: typeof savedProvider.batch === "boolean" ? savedProvider.batch : defaultProvider.batch,
   };
 }
 
