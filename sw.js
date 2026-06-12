@@ -1,4 +1,4 @@
-const CACHE_NAME = "multilookup-web-v12";
+const CACHE_NAME = "multilookup-web-v13";
 const ASSETS = [
   "./",
   "./index.html",

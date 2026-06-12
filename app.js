@@ -4,6 +4,8 @@ const DB_VERSION = 1;
 const DB_STORE = "settings";
 const CHATGPT_APP_URL = "https://chatgpt.com/?q={query}";
 const GOOGLE_MAPS_APP_URL = "https://www.google.com/maps/search/?api=1&query={query}";
+const GROK_APP_URL = "https://grok.com/?q={query}";
+const AUTO_ENABLED_PROVIDER_IDS = new Set(["grok"]);
 
 const categories = [
   { id: "all", label: "すべて" },
@@ -27,7 +29,7 @@ const defaultProviders = [
   provider("youtube", "YouTube", "▶", "video", "https://www.youtube.com/results?search_query={query}", false, false),
   provider("eGovLaw", "e-Gov法令検索", "法", "law", "https://laws.e-gov.go.jp/result?searchType=keyword&searchText={query}", false, false),
   provider("chatGPT", "ChatGPT", "AI", "ai", CHATGPT_APP_URL, false, false),
-  provider("grok", "Grok", "G", "ai", "https://grok.com/?q={query}", false, false),
+  provider("grok", "Grok", "G", "ai", GROK_APP_URL, true, false),
   provider("perplexity", "Perplexity", "P", "ai", "https://www.perplexity.ai/search?q={query}", false, false),
 ];
 
@@ -310,7 +312,7 @@ function quickOpenQuery() {
 }
 
 function quickOpenResults(query) {
-  const preferred = ["google", "googleImages", "wikipediaJA", "weblio", "monokakido", "googleMaps", "chatGPT"];
+  const preferred = ["google", "googleImages", "wikipediaJA", "weblio", "monokakido", "grok", "googleMaps", "chatGPT"];
   const providerResults = state.providers
     .filter((providerItem) => providerItem.enabled)
     .map((providerItem) => ({
@@ -321,7 +323,7 @@ function quickOpenResults(query) {
   return preferred
     .map((id) => byId.get(id))
     .filter(Boolean)
-    .slice(0, 7);
+    .slice(0, 8);
 }
 
 function shortProviderName(name) {
@@ -458,6 +460,9 @@ function normalizeState(value) {
   const savedProviders = Array.isArray(value.providers) ? value.providers : [];
   const savedById = new Map(savedProviders.map((item) => [item.id, item]));
   const providers = defaultProviders.map((item) => mergeProvider(item, savedById.get(item.id)));
+  providers.forEach((providerItem) => {
+    if (AUTO_ENABLED_PROVIDER_IDS.has(providerItem.id)) providerItem.enabled = true;
+  });
   savedProviders
     .filter((item) => !providers.some((providerItem) => providerItem.id === item.id))
     .forEach((item) => providers.push(item));
