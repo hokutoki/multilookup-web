@@ -3,6 +3,7 @@ const DB_NAME = "multilookup-web";
 const DB_VERSION = 1;
 const DB_STORE = "settings";
 const CHATGPT_WEB_URL = "./chatgpt-web.html?q={query}";
+const GOOGLE_MAPS_WEB_URL = "./maps-web.html?q={query}";
 
 const categories = [
   { id: "all", label: "すべて" },
@@ -22,7 +23,7 @@ const defaultProviders = [
   provider("weblio", "Weblio", "W", "dictionary", "https://www.weblio.jp/content/{query}", true, true),
   provider("monokakido", "物書堂", "物", "dictionary", "mkdictionaries:///?text={query}&usePasteboardText=YES&scope=headword", true, false, "externalApp"),
   provider("appleMaps", "Appleマップ", "地", "map", "https://maps.apple.com/?q={query}", false, false),
-  provider("googleMaps", "Googleマップ", "地", "map", "https://www.google.com/maps/search/?api=1&query={query}", false, false),
+  provider("googleMaps", "Googleマップ Web", "地", "map", GOOGLE_MAPS_WEB_URL, false, false),
   provider("youtube", "YouTube", "▶", "video", "https://www.youtube.com/results?search_query={query}", false, false),
   provider("eGovLaw", "e-Gov法令検索", "法", "law", "https://laws.e-gov.go.jp/result?searchType=keyword&searchText={query}", false, false),
   provider("chatGPT", "ChatGPT Web", "AI", "ai", CHATGPT_WEB_URL, false, false),

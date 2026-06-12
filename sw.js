@@ -1,8 +1,9 @@
-const CACHE_NAME = "multilookup-web-v6";
+const CACHE_NAME = "multilookup-web-v7";
 const ASSETS = [
   "./",
   "./index.html",
   "./chatgpt-web.html",
+  "./maps-web.html",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
