@@ -83,11 +83,20 @@ els.searchForm.addEventListener("submit", (event) => {
   runSearch(els.queryInput.value, { openFirst: state.quickOpen });
 });
 
+els.queryInput.addEventListener("input", () => {
+  renderQuickOpen();
+});
+
 els.openBatchButton.addEventListener("click", () => {
   startLauncher();
 });
 
 els.quickOpenAllButton.addEventListener("click", () => {
+  const query = quickOpenQuery();
+  if (!query) return;
+  if (query !== currentQuery) {
+    runSearch(query, { openFirst: false });
+  }
   startLauncher();
 });
 
@@ -274,13 +283,14 @@ function renderResults() {
 function renderQuickOpen() {
   if (!els.quickOpenSection || !els.quickOpenGrid) return;
   els.quickOpenGrid.innerHTML = "";
-  if (!currentQuery || results.length === 0) {
+  const query = quickOpenQuery();
+  if (!query) {
     els.quickOpenSection.hidden = true;
     return;
   }
 
   els.quickOpenSection.hidden = false;
-  quickOpenResults().forEach((result) => {
+  quickOpenResults(query).forEach((result) => {
     const externalApp = isExternalAppResult(result);
     const link = document.createElement("a");
     link.className = `quick-open-button${externalApp ? " app-quick-open-button" : ""}`;
@@ -295,13 +305,23 @@ function renderQuickOpen() {
   });
 }
 
-function quickOpenResults() {
+function quickOpenQuery() {
+  return els.queryInput.value.trim() || currentQuery;
+}
+
+function quickOpenResults(query) {
   const preferred = ["google", "googleImages", "wikipediaJA", "weblio", "monokakido", "googleMaps", "chatGPT"];
-  const byId = new Map(results.map((result) => [result.provider.id, result]));
+  const providerResults = state.providers
+    .filter((providerItem) => providerItem.enabled)
+    .map((providerItem) => ({
+      provider: providerItem,
+      url: renderUrl(providerItem.template, query),
+    }));
+  const byId = new Map(providerResults.map((result) => [result.provider.id, result]));
   return preferred
     .map((id) => byId.get(id))
     .filter(Boolean)
-    .slice(0, 6);
+    .slice(0, 7);
 }
 
 function shortProviderName(name) {
