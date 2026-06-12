@@ -171,6 +171,15 @@ p {
   font-size: 13px;
 }
 
+#saveStatus {
+  color: var(--accent-dark);
+  text-align: right;
+}
+
+#saveStatus.error {
+  color: var(--danger);
+}
+
 .category-list,
 .history-list,
 .provider-settings {

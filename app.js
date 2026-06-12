@@ -1,4 +1,7 @@
 const STORAGE_KEY = "multilookup.web.state.v1";
+const DB_NAME = "multilookup-web";
+const DB_VERSION = 1;
+const DB_STORE = "settings";
 
 const categories = [
   { id: "all", label: "すべて" },
@@ -30,7 +33,7 @@ function provider(id, name, icon, category, template, enabled, batch) {
   return { id, name, icon, category, template, enabled, batch };
 }
 
-let state = loadState();
+let state = normalizeState({});
 let activeCategory = "all";
 let currentQuery = "";
 let results = [];
@@ -50,14 +53,14 @@ const els = {
   providerSettings: document.querySelector("#providerSettings"),
   exportButton: document.querySelector("#exportButton"),
   importInput: document.querySelector("#importInput"),
+  saveStatus: document.querySelector("#saveStatus"),
 };
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
 }
 
-render();
-hydrateFromUrl();
+start();
 
 els.searchForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -90,16 +93,27 @@ els.exportButton.addEventListener("click", () => {
 });
 
 els.importInput.addEventListener("change", async () => {
-  const file = els.importInput.files?.[0];
-  if (!file) return;
-  const text = await file.text();
-  const imported = JSON.parse(text);
-  state = normalizeState(imported);
-  persist();
-  render();
-  renderSettings();
-  els.importInput.value = "";
+  try {
+    const file = els.importInput.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    const imported = JSON.parse(text);
+    state = normalizeState(imported);
+    persist();
+    render();
+    renderSettings();
+    els.importInput.value = "";
+  } catch {
+    setSaveStatus("読み込みに失敗しました", true);
+  }
 });
+
+async function start() {
+  state = await loadState();
+  setSaveStatus("設定を読み込みました");
+  render();
+  hydrateFromUrl();
+}
 
 function runSearch(rawQuery) {
   const query = rawQuery.trim();
@@ -264,13 +278,20 @@ function renderUrl(template, query) {
   return template.replaceAll("{query}", encodeURIComponent(query));
 }
 
-function loadState() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return normalizeState({});
+async function loadState() {
+  const localState = loadStateFromLocalStorage();
+  if (localState) return localState;
+  const indexedState = await loadStateFromIndexedDB();
+  return indexedState || normalizeState({});
+}
+
+function loadStateFromLocalStorage() {
   try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
     return normalizeState(JSON.parse(raw));
   } catch {
-    return normalizeState({});
+    return null;
   }
 }
 
@@ -288,7 +309,77 @@ function normalizeState(value) {
 }
 
 function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  const serialized = JSON.stringify(state);
+  let localSaved = false;
+  try {
+    localStorage.setItem(STORAGE_KEY, serialized);
+    localSaved = localStorage.getItem(STORAGE_KEY) === serialized;
+  } catch {
+    localSaved = false;
+  }
+
+  saveStateToIndexedDB(serialized)
+    .then(() => setSaveStatus(localSaved ? "保存済み" : "保存済み（予備領域）"))
+    .catch(() => {
+      setSaveStatus(localSaved ? "保存済み" : "保存できません", !localSaved);
+    });
+}
+
+function openSettingsDB() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) {
+      reject(new Error("IndexedDB is not available"));
+      return;
+    }
+
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore(DB_STORE);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function loadStateFromIndexedDB() {
+  try {
+    const db = await openSettingsDB();
+    return await new Promise((resolve, reject) => {
+      const transaction = db.transaction(DB_STORE, "readonly");
+      const store = transaction.objectStore(DB_STORE);
+      const request = store.get(STORAGE_KEY);
+      request.onsuccess = () => {
+        if (!request.result) {
+          resolve(null);
+          return;
+        }
+        try {
+          resolve(normalizeState(JSON.parse(request.result)));
+        } catch {
+          resolve(null);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function saveStateToIndexedDB(serialized) {
+  const db = await openSettingsDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(DB_STORE, "readwrite");
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.objectStore(DB_STORE).put(serialized, STORAGE_KEY);
+  });
+}
+
+function setSaveStatus(message, isError = false) {
+  if (!els.saveStatus) return;
+  els.saveStatus.textContent = message;
+  els.saveStatus.classList.toggle("error", isError);
 }
 
 function escapeHtml(value) {
